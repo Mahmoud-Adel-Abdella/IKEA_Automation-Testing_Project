@@ -1,13 +1,13 @@
-package pages;
+package Pages;
 
-import io.cucumber.java.cs.Ale;
-import org.openqa.selenium.Alert;
+import com.github.javafaker.Faker;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import java.time.Duration;
 import java.util.List;
@@ -17,25 +17,42 @@ public class BasePage {
     //Globals
     protected WebDriver driver;
     protected WebDriverWait wait;
-    protected Alert alert;
+    protected Actions actions;
+    protected Faker faker;
 
-    public BasePage(WebDriver driver){
+    public BasePage(WebDriver driver) {
         this.driver = driver;
-        wait = new WebDriverWait(driver , Duration.ofSeconds(10));
+        wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        actions = new Actions(driver);
+        faker = new Faker();
+//        PageFactory.initElements(driver, this);
     }
 
-    public void write(By locator , String item){
+    public void write(By locator, String text) {
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         element.clear();
-        element.sendKeys(item);
+        element.sendKeys(text);
     }
 
-    public void myClick(By locator){
-        wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
+    public String read(By locator) {
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+
+        return element.getText();
     }
 
+    public double readDigits(By locator) {
+        return Double.parseDouble(read(locator).replaceAll("[^0-9]", ""));
+    }
 
-    public void radioRandomSelect(By locator){
+    public void click(By locator) {
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        actions.moveToElement(element).perform();
+
+        wait.until(ExpectedConditions.elementToBeClickable(locator));
+        element.click();
+    }
+
+    public void radioRandomSelect(By locator) {
         List<WebElement> radios = driver.findElements(locator);
 
         Random random = new Random();
@@ -45,8 +62,8 @@ public class BasePage {
         selector.click();
     }
 
-    public void dropdownRandomSelect(By locator){
-        WebElement element= wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+    public void dropdownRandomSelect(By locator) {
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         Select selects = new Select(element);
 
         List<WebElement> options = selects.getOptions();
@@ -56,19 +73,13 @@ public class BasePage {
 
         selects.selectByIndex(randomIndex);
     }
-    
-    public void navigateTo(String url){
-        driver.get(url);
+
+    public String getAttribute(By locator, String attribute) {
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        return element.getAttribute(attribute);
     }
 
-    public String getAlertText(){
-        wait.until(ExpectedConditions.alertIsPresent());
-
-        alert = driver.switchTo().alert();
-
-        String text = alert.getText();
-        alert.accept();
-
-        return text;
+    public void navigateTo(String url) {
+        driver.get(url);
     }
 }
