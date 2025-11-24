@@ -13,12 +13,12 @@ public class Hooks {
     @Before
     public void setup(){
         driver = new ChromeDriver();
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(20));
         driver.manage().window().maximize();
     }
 
     @After
     public void tearDown(){
-        //driver.quit();
+        driver.quit();
     }
 }
