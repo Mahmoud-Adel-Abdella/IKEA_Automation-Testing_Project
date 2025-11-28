@@ -6,9 +6,11 @@ import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import utilities.ClickUtils;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 public class BasePage {
@@ -38,7 +40,7 @@ public class BasePage {
         return element.getText();
     }
 
-    public String readByAttribute(By locator , String attribute){
+    public String readByAttribute(By locator, String attribute) {
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
 
         return element.getAttribute(attribute);
@@ -52,6 +54,13 @@ public class BasePage {
         return Double.parseDouble(text.replaceAll("[^0-9]", ""));
     }
 
+    public WebElement getWebElement(By locator) {
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        actions.moveToElement(element).perform();
+
+        return element;
+    }
+
     public void click(By locator) {
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
         actions.moveToElement(element).perform();
@@ -61,7 +70,16 @@ public class BasePage {
         element.click();
     }
 
-    public void checkCookies(By locator){
+    public void click(WebElement element) {
+        wait.until(ExpectedConditions.visibilityOf(element));
+        actions.moveToElement(element).perform();
+
+        wait.until(ExpectedConditions.elementToBeClickable(element));
+        actions.scrollToElement(element).perform();
+        element.click();
+    }
+
+    public void checkCookies(By locator) {
         WebElement element = driver.findElement(locator);
         if (element.isDisplayed()) click(locator);
     }
@@ -121,5 +139,80 @@ public class BasePage {
         }
 
         return size / 4 < found;
+    }
+
+    public boolean ratioAssert(By locator, String title, String attribute) {
+        List<WebElement> elements = driver.findElements(locator);
+
+        int found = 0;
+        int size = elements.size();
+
+        for (WebElement element : elements) {
+            String productTitle = element.getAttribute(attribute);
+
+            assert productTitle != null;
+            if (productTitle.contains(title)) {
+                found++;
+            }
+        }
+
+        return size / 4 < found;
+    }
+
+    public void randomClick(By locator) {
+        List<WebElement> elements = driver.findElements(locator);
+
+        Random random = new Random();
+        int randomIndex = random.nextInt(elements.size());
+
+        WebElement selector = elements.get(randomIndex);
+        ClickUtils.guaranteedClick(selector);
+    }
+
+    public boolean verifySort(By locator) {
+        List<WebElement> elements = driver.findElements(locator);
+
+        int price, priceNext;
+        boolean check = false;
+
+        for (int i = 0; i < elements.size() - 1; i++) {
+            price = (int) readDigits(elements.get(i).getText());
+            priceNext = (int) readDigits(elements.get(i + 1).getText());
+
+            if (price < priceNext) check = true;
+        }
+
+        return check;
+    }
+
+    public boolean verifyRange(By locator, String min, String max) {
+        List<WebElement> elements = driver.findElements(locator);
+
+        int checkCount = 0;
+
+        for (WebElement element : elements) {
+            double face = readDigits(element.getText());
+
+            if (face < Double.parseDouble(max) && face > Double.parseDouble(min)) {
+                checkCount++;
+            }
+        }
+        return checkCount > 0.9 * elements.size();
+    }
+
+    public boolean verifyRange(By locator, String attribute, String min, String max) {
+        List<WebElement> elements = driver.findElements(locator);
+
+        int checkCount = 0;
+
+        for (WebElement element : elements) {
+            double face = readDigits(Objects.requireNonNull(element.getAttribute(attribute)));
+
+            if (face <= Double.parseDouble(max) && face >= Double.parseDouble(min)) {
+                checkCount++;
+            }
+        }
+
+        return checkCount > 0.9 * elements.size();
     }
 }

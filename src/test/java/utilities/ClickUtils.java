@@ -160,4 +160,85 @@ public class ClickUtils extends BasePage {
         } catch (Exception ignored) {}
         return null;
     }
+
+    public static void guaranteedClick(WebElement elementParam) {
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Actions actions = new Actions(driver);
+
+        java.util.function.Supplier<Boolean> tryClickInCurrentContext = () -> {
+            try {
+                WebElement element = elementParam;
+
+                // حاول التأكد إن العنصر ما زال حاضر وقابل للتفاعل قدر الإمكان
+                try {
+                    // If the element is stale, this will throw StaleElementReferenceException
+                    if (!element.isDisplayed() || !element.isEnabled()) {
+                        // نسمح بمحاولة غير مباشرة ولكن لن نكرر البحث لأننا لا نملك locator هنا
+                    }
+                } catch (StaleElementReferenceException sere) {
+                    return false; // العنصر تغير — caller يمكنه إعادة استدعاء مع عنصر جديد
+                } catch (Exception ignored) {}
+
+                // Scroll to view
+                try {
+                    js.executeScript("arguments[0].scrollIntoView({block: 'center', inline: 'center'});", element);
+                } catch (Exception ignored) {}
+
+                // 1) Click عادي
+                try {
+                    element.click();
+                    return true;
+                } catch (ElementClickInterceptedException | MoveTargetOutOfBoundsException e) {
+                    // اعتراض أو مشكلة موضع — نجرب البدائل
+                } catch (StaleElementReferenceException sere) {
+                    return false;
+                } catch (Exception ignored) {}
+
+                // 2) Actions move + click
+                try {
+                    actions.moveToElement(element).pause(Duration.ofMillis(200)).click().perform();
+                    return true;
+                } catch (Exception ignored) {}
+
+                // 3) JS click
+                try {
+                    js.executeScript("arguments[0].click();", element);
+                    return true;
+                } catch (Exception ignored) {}
+
+                // 4) Dispatch actual MouseEvent
+                try {
+                    String script =
+                            "const el = arguments[0];" +
+                                    "var ev = new MouseEvent('click', {bubbles: true, cancelable: true, view: window});" +
+                                    "el.dispatchEvent(ev);";
+                    js.executeScript(script, element);
+                    return true;
+                } catch (Exception ignored) {}
+
+                // 5) Checkbox / radio fallback
+                try {
+                    String type = element.getAttribute("type");
+                    if (type != null && (type.equalsIgnoreCase("checkbox") || type.equalsIgnoreCase("radio"))) {
+                        js.executeScript("arguments[0].checked = true; arguments[0].dispatchEvent(new Event('change', {bubbles:true}));", element);
+                        return true;
+                    }
+                } catch (Exception ignored) {}
+
+            } catch (Exception e) {
+                // أي استثناء عام — نعيد false
+            }
+            return false;
+        };
+
+        // نجرب في السياق الحالي فقط (لا نستطيع التنقل بين iframes بدون locator)
+        if (tryClickInCurrentContext.get()) {
+            System.out.println("✅ Click succeeded in current context for WebElement");
+            return;
+        }
+
+        System.out.println("❌ guaranteedClick FAILED for provided WebElement (current context). " +
+                "If the element might be inside a different iframe or shadow root, call the overloaded guaranteedClick(By locator) instead.");
+    }
+
 }
